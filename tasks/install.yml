@@ -1,12 +1,15 @@
 ---
-
 - name: VECTOR | Ensure vector group
+  tags: [vector_install]
   group:
     name: "{{ vector_group }}"
     system: yes
     state: present
+    gid: 65750
+  when: vector_group != "root"
 
 - name: VECTOR | Ensure vector user
+  tags: [vector_install]
   user:
     name: "{{ vector_user }}"
     group: "{{ vector_group }}"
@@ -15,8 +18,11 @@
     shell: /usr/sbin/nologin
     createhome: no
     append: True
+    uid: 65750
+  when: vector_group != "root"
 
 - name: VECTOR | Ensure skeleton paths
+  tags: [vector_install]
   file:
     dest: "{{ item }}"
     owner: "{{ vector_user }}"
@@ -27,12 +33,31 @@
     - "{{ vector_skeleton_paths }}"
 
 - name: VECTOR | Check vector version
+  tags: [vector_install]
   command: "{{ vector_exec_name }} --version"
   register: vector_check
   changed_when: false
   ignore_errors: true
 
-- name: VECTOR | Download package
-  apt:
-    deb: "{{ vector_deb_package }}"
-  when: vector_force_reinstall or vector_check is failed or vector_version not in vector_check.stdout
+- when: vector_force_reinstall or vector_check is failed or vector_version not in vector_check.stdout
+  tags: [vector_install]
+  block:
+    - name: Download vector archive
+      get_url:
+        url: "{{vector_tar_archive}}"
+        dest: /tmp/vector-{{vector_version}}.tar.gz
+      register: vector_tar
+
+    - name: Unpack the tar.gz archive
+      command: tar --strip-components=2 -xzf {{vector_tar.dest}} -C {{vector_data_dir}}
+
+    - name: Delete vector archive
+      file:
+        path: "{{vector_tar.dest}}"
+        state: absent
+
+    - name: Create symbolic link
+      file:
+        src: "{{vector_data_dir}}/bin/vector"
+        dest: "{{ vector_bin_path }}"
+        state: link

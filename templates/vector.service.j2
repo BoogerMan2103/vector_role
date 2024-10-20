@@ -15,7 +15,7 @@ After=network-online.target
 
 [Service]
 User={{ vector_user }}
-Group={{ vector_group }}
+Group={{ vector_user }}
 ExecStartPre={{ vector_bin_path }} validate {{ params_exec_start_pre | default('') }}
 ExecStart={{ vector_bin_path }} {{ params_exec_start | default('') }}
 ExecReload={{ vector_bin_path }} validate {{ params_exec_start_pre | default('') }}

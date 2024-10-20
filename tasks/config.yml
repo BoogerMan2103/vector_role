@@ -1,5 +1,4 @@
 ---
-
 - name: VECTOR | Create templates config skeleton
   file:
     path: "{{ vector_config_path }}/{{ item.path }}"
@@ -16,7 +15,7 @@
     dest: "{{ vector_config_path }}/{{ item.path | replace('.j2', '') }}"
     owner: "{{ vector_user }}"
     group: "{{ vector_group }}"
-    mode: '0640'
+    mode: "0640"
   with_filetree: "{{ vector_config_template_path }}"
   when: "item.state == 'file'"
   notify: Restart vector

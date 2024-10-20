@@ -1,5 +1,4 @@
 ---
-
 - name: VECTOR | Copy Daemon script
   template:
     src: "{{ vector_service_template_path }}"
