@@ -22,6 +22,7 @@ vector_config_path: "/etc/vector"
 vector_skeleton_paths_base:
   - "{{ vector_config_path }}"
   - "{{ vector_data_dir }}"
+  - "/var/lib/vector/journald/"
 vector_skeleton_paths: "{{ vector_skeleton_paths_base + vector_skeleton_paths_extend | default([]) }}"
 
 ## Service options

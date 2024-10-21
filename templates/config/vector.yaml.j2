@@ -1,0 +1,101 @@
+sources:
+  journald:
+    type: journald
+    since_now: true
+    exclude_matches:
+      _TRANSPORT:
+        - kernel
+      SYSLOG_IDENTIFIER:
+        - sshguard
+        - sshd
+  node_metrics:
+    type: host_metrics
+    namespace: node
+    scrape_interval_secs: 15
+    filesystem:
+      filesystems:
+        includes:
+          - ext4
+          - ntfs
+          - vfat
+  itself:
+    type: internal_metrics
+    namespace: vector
+    scrape_interval_secs: 15  
+  docker_logs:
+    type: docker_logs
+  # file_logs:
+  #   type: file
+  #   include:
+  #     - /var/log/nginx/nohup.out
+
+transforms:
+  labeled_metrics:
+    type: remap
+    inputs:
+      - node_metrics
+      - itself
+    source: |-
+{% raw %}
+      .tags.instance = del(.tags.host)
+      .tags.job = "node-exporter"
+{% endraw %}
+{% for key, value in vector_tags.items() %}
+      {{ "." }}tags{{ "." }}{{ key }} = "{{ value }}"
+{% endfor %}
+  labeled_logs:
+    type: remap
+    inputs:
+      - journald
+      - docker_logs
+      # - file_logs
+    source: |-
+{% for key, value in vector_tags.items() %}
+      {{ "." }}labels{{ "." }}{{ key }} = "{{ value }}"
+{% endfor %}
+{% raw %}
+      .labels.log_collector = "vector"
+      .labels.host = .host
+      .labels.source_type = .source_type
+      if exists(.SYSLOG_IDENTIFIER) {
+        .labels.syslog_identifier = .SYSLOG_IDENTIFIER
+      } else if exists(.container_name) {
+        .labels.container_name = .container_name
+      } else if (.source == "/var/log/nginx/nohup.out") {
+        .labels.source = "mock-ipfs";
+      }
+{% endraw %}
+
+sinks:
+  loki:
+    type: loki
+    inputs:
+      - labeled_logs
+    endpoint: "{{ loki_endpoint }}"
+    auth:
+      strategy: basic
+      password: "{{ loki_password }}"
+      user: loki
+    compression: snappy
+    encoding:
+      codec: text
+    labels:
+{% raw %}
+      "*": "{{ .labels }}"
+{% endraw %}
+    out_of_order_action: drop
+    #remove_label_fields: true
+    healthcheck:
+      enabled: false
+  victoria_metrics:
+    type: prometheus_remote_write
+    inputs:
+      - labeled_metrics
+    endpoint: "{{ prom_endpoint }}"
+    auth:
+      strategy: "basic"
+      user: prom
+      password: "{{ prom_password }}"
+    compression: snappy
+    healthcheck:
+      enabled: false
