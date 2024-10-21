@@ -32,6 +32,15 @@
   with_items:
     - "{{ vector_skeleton_paths }}"
 
+- name: VECTOR | Ensure vector bin path owner
+  tags: [vector_install]
+  file:
+    dest: "{{vector_data_dir}}"
+    state: directory
+    recurse: yes
+    owner: "{{ vector_user }}"
+    group: "{{ vector_group }}"
+
 - name: VECTOR | Check vector version
   tags: [vector_install]
   command: "{{ vector_exec_name }} --version"
